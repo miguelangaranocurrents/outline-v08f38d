@@ -34,6 +34,14 @@ function isListClose(token: Token): boolean {
   );
 }
 
+function isListOpenOrChecklist(token: Token): boolean {
+  return isListOpen(token) || token.type === "checkbox_list_open";
+}
+
+function isListCloseOrChecklist(token: Token): boolean {
+  return isListClose(token) || token.type === "checkbox_list_close";
+}
+
 function looksLikeChecklist(tokens: Token[], index: number) {
   return (
     isInline(tokens[index]) &&
@@ -75,15 +83,24 @@ export default function markdownItCheckbox(md: MarkdownIt): void {
 
         // convert the enclosing list tokens, which may not be adjacent when
         // the checkbox item is preceded by plain items or contains nested lists.
+        // Lists already converted by an earlier checkbox item are matched too,
+        // otherwise a sibling checkbox in the same list would walk past it and
+        // convert an unrelated neighbouring list.
         const listLevel = tokens[i - 2].level - 1;
         for (let k = i - 3; k >= 0; k--) {
-          if (tokens[k].level === listLevel && isListOpen(tokens[k])) {
+          if (
+            tokens[k].level === listLevel &&
+            isListOpenOrChecklist(tokens[k])
+          ) {
             tokens[k].type = "checkbox_list_open";
             break;
           }
         }
         for (let k = i + 1; k < tokens.length; k++) {
-          if (tokens[k].level === listLevel && isListClose(tokens[k])) {
+          if (
+            tokens[k].level === listLevel &&
+            isListCloseOrChecklist(tokens[k])
+          ) {
             tokens[k].type = "checkbox_list_close";
             break;
           }
